@@ -1,0 +1,237 @@
+import { Command } from 'commander';
+import { chunkFile } from '../core/chunker';
+import { generateMetadata } from '../core/metadata';
+import { parseUrl } from '../core/url-parser';
+import { MAX_CHUNK_SIZE } from '../constants';
+import { publishPackage, createPackage } from '../npm/publisher';
+import { isNpmAuthenticated } from '../npm/auth';
+import * as fs from 'fs';
+import * as path from 'path';
+import axios from 'axios';
+
+export const publish = new Command('publish')
+  .description('Publish a file to npm by chunking it into smaller pieces')
+  .option('-n, --name <name>', 'name of the package to be published')
+  .option('-V, --pkg-version <version>', 'version of the package')
+  .option('-p, --path <path>', 'path to the file or URL to download')
+  .action(async (options) => {
+    try {
+      console.log('Starting publish command...');
+      let { name, pkgVersion: version, path: filePath } = options;
+      
+      // Check if npm is authenticated
+      if (!isNpmAuthenticated()) {
+        console.error('Error: npm is not authenticated. Please run "npm login" first.');
+        process.exit(1);
+      }
+      
+      console.log(`Options: name=${name}, version=${version}, path=${filePath}`);
+      
+      // Check if path is a URL
+      if (filePath && filePath.startsWith('http')) {
+        console.log('Detected URL, downloading file...');
+        // Parse URL to extract name and version if not provided
+        const urlInfo = parseUrl(filePath);
+        if (!name) name = urlInfo.name;
+        if (!version) version = urlInfo.version;
+        console.log(`Parsed from URL: name=${name}, version=${version}`);
+        
+        // Download file from URL to temporary location
+        console.log(`Downloading file from ${filePath}`);
+        const response = await axios({
+          method: 'GET',
+          url: filePath,
+          responseType: 'stream'
+        });
+        
+        // Create temporary file path
+        const tempDir = path.join(process.cwd(), 'temp');
+        if (!fs.existsSync(tempDir)) {
+          fs.mkdirSync(tempDir);
+        }
+        
+        const fileName = path.basename(filePath);
+        filePath = path.join(tempDir, fileName);
+        
+        const writer = fs.createWriteStream(filePath);
+        response.data.pipe(writer);
+        
+        // Wait for download to complete
+        await new Promise((resolve, reject) => {
+          writer.on('finish', resolve);
+          writer.on('error', reject);
+        });
+        
+        console.log(`File downloaded to ${filePath}`);
+      }
+      
+      // Validate required parameters
+      if (!name || !version || !filePath) {
+        console.error('Error: name, version, and path are required');
+        process.exit(1);
+      }
+      
+      console.log(`Validated parameters: name=${name}, version=${version}, path=${filePath}`);
+      
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        console.error(`Error: File ${filePath} does not exist`);
+        process.exit(1);
+      }
+      
+      // Detect platform from file extension and filename
+      const fileExtension = path.extname(filePath).toLowerCase();
+      const fileName = path.basename(filePath).toLowerCase();
+      let platformSuffix = '';
+      
+      // Check extension first
+      if (fileExtension === '.dmg') {
+        platformSuffix = '-macos';
+      } else if (fileExtension === '.exe') {
+        platformSuffix = '-windows';
+      } else if (fileExtension === '.deb' || fileExtension === '.rpm' || fileExtension === '.appimage') {
+        platformSuffix = '-linux';
+      }
+      
+      // If no platform detected from extension, check filename
+      if (!platformSuffix) {
+        if (fileName.includes('macos') || fileName.includes('darwin')) {
+          platformSuffix = '-macos';
+        } else if (fileName.includes('win') && !fileName.includes('window')) { // Avoid matching "window" in other words
+          platformSuffix = '-windows';
+        } else if (fileName.includes('linux') || fileName.includes('unix') || 
+                   fileName.includes('ubuntu') || fileName.includes('debian') || 
+                   fileName.includes('fedora') || fileName.includes('centos') ||
+                   fileName.includes('redhat') || fileName.includes('suse') ||
+                   fileName.includes('arch') || fileName.includes('manjaro') ||
+                   (fileName.includes('linux') && fileName.includes('x86')) ||
+                   (fileName.includes('linux') && fileName.includes('arm'))) {
+          platformSuffix = '-linux';
+        }
+      }
+      
+      // Modify name and version to include platform suffix
+      const platformName = name + platformSuffix;
+      const platformVersion = version;
+      
+      console.log(`Detected platform: ${platformSuffix || 'generic'}`);
+      console.log(`Package name will be: ${platformName}-${platformVersion}`);
+      
+      // Chunk the file
+      console.log(`Chunking file ${filePath}`);
+      const chunks = await chunkFile(filePath, MAX_CHUNK_SIZE); // 64MB chunks
+      
+      console.log(`File chunked into ${chunks.length} pieces`);
+      
+      // Generate metadata for the file
+      console.log('Generating metadata');
+      const metadata = generateMetadata(filePath, chunks.length);
+      
+      console.log(`Package name: ${platformName}, version: ${platformVersion}`);
+      
+      // If file is smaller than chunk size, upload directly without chunking
+      if (chunks.length <= 1) {
+        console.log('File is smaller than chunk size, uploading directly...');
+        
+        // For small files, we still create chunks but there will be only one
+        // We'll use the main package to store the file directly
+        const mainTagName = `${platformName}-${platformVersion}`;
+        const packageName = '@byp/packages';
+        console.log(`Creating package with version ${platformVersion}-${platformName}-${Date.now()} and tag ${mainTagName}`);
+        
+        // Generate metadata for the single chunk/file
+        if (chunks.length === 1) {
+          generateMetadata(filePath, chunks.length, 0, chunks[0].filePath);
+        }
+        
+        const mainPackageDir = createPackage(
+          packageName,
+          `${platformVersion}-${platformName}-${Date.now()}`, // Main package version with package info and timestamp
+          mainTagName,
+          filePath, // Use the original file directly
+          path.join(process.cwd(), 'temp', chunks.length === 1 ? 'metadata-chunk-0.json' : 'metadata.json')
+        );
+        
+        const success = await publishPackage(mainPackageDir, mainTagName);
+        
+        if (!success) {
+          console.error('Failed to publish main package');
+          process.exit(1);
+        }
+        
+        // Clean up temporary package directory
+        fs.rmSync(mainPackageDir, { recursive: true, force: true });
+        
+        console.log(`Successfully published ${platformName}-${platformVersion} (single file, no chunking)`);
+        return;
+      }
+      
+      // For large files, use the chunking approach
+      // Publish each chunk to npm
+      console.log('Publishing chunks to npm...');
+      const packageName = '@byp/packages';
+      
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        const chunkTagName = `${platformName}-${platformVersion}-chunk-${String(i + 1).padStart(3, '0')}`;
+        
+        console.log(`Processing chunk ${i + 1}/${chunks.length} with tag ${chunkTagName}`);
+        
+        // Generate metadata for this specific chunk
+        const chunkMetadata = generateMetadata(filePath, chunks.length, i, chunk.filePath);
+        
+        // Create package for this chunk with a unique version number
+        // Using format: <package_version>-<package_name>-<timestamp>
+        const chunkVersion = `${platformVersion}-${platformName}-${Date.now()}`;
+        console.log(`Creating package with version ${chunkVersion} and tag ${chunkTagName}`);
+        
+        const packageDir = createPackage(
+          packageName,
+          chunkVersion,
+          chunkTagName,
+          chunk.filePath,
+          path.join(process.cwd(), 'temp', `metadata-chunk-${i}.json`)
+        );
+        
+        // Publish the package
+        console.log(`Publishing chunk ${i + 1}/${chunks.length} with tag ${chunkTagName}...`);
+        const success = await publishPackage(packageDir, chunkTagName);
+        
+        if (!success) {
+          console.error(`Failed to publish chunk ${i + 1}`);
+          process.exit(1);
+        }
+        
+        // Clean up temporary package directory
+        fs.rmSync(packageDir, { recursive: true, force: true });
+      }
+      
+      // Publish main package with metadata
+      console.log('Publishing main package...');
+      const mainTagName = `${platformName}-${platformVersion}`;
+      console.log(`Creating main package with version ${platformVersion}-${platformName}-${Date.now()} and tag ${mainTagName}`);
+      
+      const mainPackageDir = createPackage(
+        packageName,
+        `${platformVersion}-${platformName}-${Date.now()}`, // Main package version with package info and timestamp
+        mainTagName,
+        filePath,
+        path.join(process.cwd(), 'temp', 'metadata.json')
+      );
+      
+      const success = await publishPackage(mainPackageDir, mainTagName);
+      
+      if (!success) {
+        console.error('Failed to publish main package');
+        process.exit(1);
+      }
+      
+      // Clean up temporary package directory
+      fs.rmSync(mainPackageDir, { recursive: true, force: true });
+      
+      console.log(`Successfully published ${platformName}-${platformVersion} with ${chunks.length} chunks`);
+    } catch (error) {
+      console.error('Error:', error);
+      process.exit(1);
+    }
+  });
