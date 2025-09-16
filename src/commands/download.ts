@@ -121,7 +121,11 @@ Options:
             } else {
               console.log('✅ File integrity verified successfully');
             }
+          } else {
+            console.log('ℹ️  No file hash available for integrity verification');
           }
+        } else {
+          console.log('ℹ️  No metadata file found for integrity verification');
         }
         
         // Create output directory if it doesn't exist
@@ -257,7 +261,13 @@ Options:
         reassemblyProgressBar.update(reassembledBytes);
       }
       
-      writeStream.end();
+      // Wait for the stream to finish before verifying
+      await new Promise<void>((resolve, reject) => {
+        writeStream.end(() => {
+          resolve();
+        });
+        writeStream.on('error', reject);
+      });
       
       console.log(); // New line after progress bar
       
@@ -271,6 +281,8 @@ Options:
         } else {
           console.log('✅ Reassembled file integrity verified successfully');
         }
+      } else {
+        console.log('ℹ️  No file hash available for integrity verification');
       }
       
       console.log(`🎉 Successfully downloaded and reassembled ${originalFileName} to ${outputFile}`);
