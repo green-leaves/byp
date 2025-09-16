@@ -6,6 +6,22 @@ import { DEFAULT_PACKAGE_NAME } from '../constants';
 export const search = new Command('search')
   .description('Search for packages by keyword')
   .argument('<keyword>', 'keyword to search for')
+  .helpOption('-h, --help', 'Display help for command')
+  .addHelpText('after', `
+Examples:
+  $ byp package search myapp
+  $ byp package search "version 1.0"
+
+Description:
+  Searches for packages that have been published using the 'publish' command.
+  Matches keywords in package names and descriptions.
+
+Arguments:
+  <keyword>  Keyword to search for in package names and descriptions
+
+Options:
+  -h, --help  Display help for command
+`)
   .action(async (keyword) => {
     try {
       // Check if npm is authenticated

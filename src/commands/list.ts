@@ -6,6 +6,15 @@ import * as path from 'path';
 
 export const list = new Command('list')
   .description('List all published packages')
+  .helpOption('-h, --help', 'Display help for command')
+  .addHelpText('after', `
+Examples:
+  $ byp package list
+
+Description:
+  Lists all packages that have been published using the 'publish' command.
+  Only shows main packages (not individual chunks) that are available for download.
+`)
   .action(async () => {
     try {
       // Check if npm is authenticated

@@ -14,6 +14,23 @@ export const publish = new Command('publish')
   .option('-n, --name <name>', 'name of the package to be published')
   .option('-V, --pkg-version <version>', 'version of the package')
   .option('-p, --path <path>', 'path to the file or URL to download')
+  .helpOption('-h, --help', 'Display help for command')
+  .addHelpText('after', `
+Examples:
+  $ byp package publish --name myapp --pkg-version 1.0.0 --path ./my-large-file.zip
+  $ byp package publish --name myapp --pkg-version 1.0.0 --path https://example.com/file.zip
+
+Description:
+  Publishes a large file to npm by automatically chunking it into smaller pieces (max 64MB each).
+  Files larger than 64MB will be split into multiple chunks, each published as a separate package.
+  A main package with metadata is also published to allow for proper reassembly during download.
+
+Options:
+  -n, --name <name>          Name of the package to be published
+  -V, --pkg-version <version> Version of the package
+  -p, --path <path>          Path to the local file or URL to download
+  -h, --help                 Display help for command
+`)
   .action(async (options) => {
     try {
       console.log('Starting publish command...');

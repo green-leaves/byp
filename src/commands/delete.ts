@@ -6,6 +6,21 @@ import { DEFAULT_PACKAGE_NAME } from '../constants';
 export const del = new Command('delete')
   .description('Delete a published package')
   .argument('<name-version>', 'name and version of the package to delete (e.g., zed-0.3.4)')
+  .helpOption('-h, --help', 'Display help for command')
+  .addHelpText('after', `
+Examples:
+  $ byp package delete myapp-1.0.0
+
+Description:
+  Deletes a published package, including all its chunks if it was chunked.
+  Removes all tags associated with the package from the npm registry.
+
+Arguments:
+  <name-version>  Name and version of the package to delete (e.g., myapp-1.0.0)
+
+Options:
+  -h, --help  Display help for command
+`)
   .action(async (nameVersion) => {
     try {
       // Check if npm is authenticated

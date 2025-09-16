@@ -9,6 +9,24 @@ export const download = new Command('download')
   .description('Download and reassemble a chunked file from npm')
   .argument('<name-version>', 'name and version of the package to download (e.g., zed-0.3.4)')
   .option('-o, --output <path>', 'output path for the downloaded file')
+  .helpOption('-h, --help', 'Display help for command')
+  .addHelpText('after', `
+Examples:
+  $ byp package download myapp-1.0.0
+  $ byp package download myapp-1.0.0 --output ./downloads/
+
+Description:
+  Downloads and reassembles a file that was previously published using the 'publish' command.
+  If the original file was larger than 64MB, this command will download all chunks and reassemble them.
+  For files smaller than 64MB, it downloads the single package directly.
+
+Arguments:
+  <name-version>  Name and version of the package to download (e.g., myapp-1.0.0)
+
+Options:
+  -o, --output <path>  Output path for the downloaded file (default: current directory)
+  -h, --help           Display help for command
+`)
   .action(async (nameVersion, options) => {
     try {
       // Check if npm is authenticated

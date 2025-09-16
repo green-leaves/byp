@@ -16,7 +16,17 @@ program
 
 program
   .command('package')
-  .description('Package management commands')
+  .description('Manage packages - publish, download, list, search, and delete large files')
+  .helpOption('-h, --help', 'Display help for command')
+  .addHelpText('after', `
+Package Management Commands:
+  publish [options]    Publish a file to npm by chunking it into smaller pieces
+  download [options]   Download and reassemble a chunked file from npm
+  list                 List all published packages
+  search <keyword>     Search for packages by keyword
+  delete <name-ver>    Delete a published package
+
+Use byp package <command> --help for more information about a command.`)
   .addCommand(publish)
   .addCommand(download)
   .addCommand(list)
