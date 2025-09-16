@@ -119,24 +119,29 @@ export async function listPackageTags(packageName: string): Promise<string[]> {
 
 /**
  * Search for packages by keyword
+ * @param packageName Name of the package (@byp/packages)
  * @param keyword Keyword to search for
- * @returns Array of matching package names
+ * @returns Array of matching tag names
  */
-export async function searchPackages(keyword: string): Promise<string[]> {
+export async function searchPackages(packageName: string, keyword: string): Promise<string[]> {
   try {
     // Check if npm is authenticated
     if (!isNpmAuthenticated()) {
       throw new Error('npm is not authenticated. Please run "npm login" first.');
     }
     
-    // Search for packages within our scope
-    const scopedKeyword = `${DEFAULT_PACKAGE_NAME} ${keyword}`;
-    const result = execSync(`npm search ${scopedKeyword} --json`, { 
-      encoding: 'utf8'
-    });
+    // Get all tags for our package
+    const allTags = await listPackageTags(packageName);
     
-    const packages = JSON.parse(result);
-    return packages.map((pkg: any) => pkg.name);
+    // Filter out chunk tags and latest tag, and search for keyword in tag names
+    const mainTags = allTags.filter(tag => !tag.includes('-chunk-') && tag !== 'latest');
+    
+    // Filter tags that match the keyword
+    const matchingTags = mainTags.filter(tag => 
+      tag.toLowerCase().includes(keyword.toLowerCase())
+    );
+    
+    return matchingTags;
   } catch (error) {
     console.error('Error searching packages:', error);
     return [];

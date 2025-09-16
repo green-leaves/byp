@@ -243,8 +243,8 @@ Options:
       
       // Reassemble file
       console.log('🔧 Reassembling file...');
-      const outputFileRes = path.join(outputPath, originalFileName);
-      const writeStreamRes = fs.createWriteStream(outputFileRes);
+      const outputFile = path.join(outputPath, originalFileName);
+      const writeStream = fs.createWriteStream(outputFile);
       
       // Create progress bar for reassembly
       const totalSize = metadata.originalFileSize;
@@ -252,19 +252,19 @@ Options:
       let reassembledBytes = 0;
       
       for (const chunk of chunkData) {
-        writeStreamRes.write(chunk.data);
+        writeStream.write(chunk.data);
         reassembledBytes += chunk.data.length;
         reassemblyProgressBar.update(reassembledBytes);
       }
       
-      writeStreamRes.end();
+      writeStream.end();
       
       console.log(); // New line after progress bar
       
       // Verify reassembled file integrity if hash is available
       if (expectedFileHash) {
         console.log('🔍 Verifying reassembled file integrity...');
-        const isIntegrityOk = await verifyFileIntegrity(outputFileRes, expectedFileHash);
+        const isIntegrityOk = await verifyFileIntegrity(outputFile, expectedFileHash);
         
         if (!isIntegrityOk) {
           console.warn('⚠️  Warning: File integrity check failed for reassembled file');
@@ -273,35 +273,7 @@ Options:
         }
       }
       
-      console.log(`🎉 Successfully downloaded and reassembled ${originalFileName} to ${outputFileRes}`);
-      
-      // Sort chunks by index
-      chunkData.sort((a, b) => a.index - b.index);
-      
-      // Reassemble file
-      console.log('Reassembling file...');
-      const outputFile = path.join(outputPath, originalFileName);
-      const writeStream = fs.createWriteStream(outputFile);
-      
-      for (const chunk of chunkData) {
-        writeStream.write(chunk.data);
-      }
-      
-      writeStream.end();
-      
-      // Verify reassembled file integrity if hash is available
-      if (expectedFileHash) {
-        console.log('Verifying reassembled file integrity...');
-        const isIntegrityOk = await verifyFileIntegrity(outputFile, expectedFileHash);
-        
-        if (!isIntegrityOk) {
-          console.warn('Warning: File integrity check failed for reassembled file');
-        } else {
-          console.log('Reassembled file integrity verified successfully');
-        }
-      }
-      
-      console.log(`Successfully downloaded and reassembled ${originalFileName} to ${outputFile}`);
+      console.log(`🎉 Successfully downloaded and reassembled ${originalFileName} to ${outputFile}`);
     } catch (error) {
       console.error('Error:', error);
       process.exit(1);

@@ -32,7 +32,7 @@ Options:
       
       console.log(`Searching for packages with keyword: ${keyword}`);
       
-      const packages = await searchPackages(keyword);
+      const packages = await searchPackages(DEFAULT_PACKAGE_NAME, keyword);
       
       if (packages.length === 0) {
         console.log('No packages found.');
