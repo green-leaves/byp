@@ -12,13 +12,13 @@ import axios from 'axios';
 export const publish = new Command('publish')
   .description('Publish a file to npm by chunking it into smaller pieces')
   .option('-n, --name <name>', 'name of the package to be published')
-  .option('-V, --pkg-version <version>', 'version of the package')
+  .option('-v, --version <version>', 'version of the package')
   .option('-p, --path <path>', 'path to the file or URL to download')
   .helpOption('-h, --help', 'Display help for command')
   .addHelpText('after', `
 Examples:
-  $ byp package publish --name myapp --pkg-version 1.0.0 --path ./my-large-file.zip
-  $ byp package publish --name myapp --pkg-version 1.0.0 --path https://example.com/file.zip
+  $ byp package publish --name myapp --version 1.0.0 --path ./my-large-file.zip
+  $ byp package publish --name myapp --version 1.0.0 --path https://example.com/file.zip
 
 Description:
   Publishes a large file to npm by automatically chunking it into smaller pieces (max 64MB each).
@@ -27,14 +27,14 @@ Description:
 
 Options:
   -n, --name <name>          Name of the package to be published
-  -V, --pkg-version <version> Version of the package
+  -v, --version <version>    Version of the package
   -p, --path <path>          Path to the local file or URL to download
   -h, --help                 Display help for command
 `)
   .action(async (options) => {
     try {
       console.log('Starting publish command...');
-      let { name, pkgVersion: version, path: filePath } = options;
+      let { name, version, path: filePath } = options;
       
       // Check if npm is authenticated
       if (!isNpmAuthenticated()) {

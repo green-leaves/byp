@@ -23,7 +23,7 @@ npm install -g byp
 ### Publishing a File
 
 ```bash
-byp package publish --name my-app --pkg-version 1.0.0 --path ./my-large-file.zip
+byp package publish --name my-app --version 1.0.0 --path ./my-large-file.zip
 ```
 
 ### Downloading a File
