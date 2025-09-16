@@ -159,13 +159,28 @@ export async function deletePackageTag(
       throw new Error('npm is not authenticated. Please run "npm login" first.');
     }
     
-    // Note: npm doesn't have a direct delete command for tags
-    // This would typically be handled by unpublishing specific versions
-    // For now, we'll just log that this functionality needs to be implemented
-    console.log(`Deleting tag ${tagName} for package ${packageName}`);
-    console.log('Note: Tag deletion is not directly supported by npm.');
-    console.log('This would require unpublishing specific versions.');
+    // Get the version associated with this tag
+    const result = execSync(`npm view ${packageName} dist-tags --json`, { 
+      encoding: 'utf8'
+    });
     
+    const distTags = JSON.parse(result);
+    const version = distTags[tagName];
+    
+    if (!version) {
+      console.error(`Tag ${tagName} not found in dist-tags`);
+      return false;
+    }
+    
+    console.log(`Unpublishing package ${packageName}@${version} (tag: ${tagName})...`);
+    
+    // Unpublish the specific version
+    execSync(`npm unpublish ${packageName}@${version}`, { 
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    
+    console.log(`Successfully deleted package ${packageName}@${version} (tag: ${tagName})`);
     return true;
   } catch (error) {
     console.error('Error deleting package tag:', error);
