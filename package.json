@@ -1,5 +1,5 @@
 {
-  "name": "byp",
+  "name": "@byp/byp",
   "version": "1.0.0",
   "description": "A CLI tool for publishing and downloading large files to/from npm repositories by chunking them into smaller pieces",
   "main": "dist/index.js",
