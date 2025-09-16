@@ -16,6 +16,42 @@ export function parseUrl(url: string): { name: string; version: string } {
     };
   }
   
+  // Handle GitLab release URLs
+  // Example: https://gitlab.com/group/project/-/releases/v1.0.0/downloads/file.zip
+  const gitlabRegex = /gitlab\.com\/([^\/]+)\/([^\/]+)\/-\/releases\/v?([^\/]+)\/downloads\//;
+  const gitlabMatch = url.match(gitlabRegex);
+  
+  if (gitlabMatch) {
+    return {
+      name: gitlabMatch[2],
+      version: gitlabMatch[3]
+    };
+  }
+  
+  // Handle npm package URLs
+  // Example: https://registry.npmjs.org/package-name/-/package-name-1.0.0.tgz
+  const npmRegex = /registry\.npmjs\.org\/([^\/]+)\/-\/\1-([^\/]+)\.tgz/;
+  const npmMatch = url.match(npmRegex);
+  
+  if (npmMatch) {
+    return {
+      name: npmMatch[1],
+      version: npmMatch[2]
+    };
+  }
+  
+  // Handle PyPI package URLs
+  // Example: https://files.pythonhosted.org/packages/source/p/package-name/package-name-1.0.0.tar.gz
+  const pypiRegex = /files\.pythonhosted\.org\/packages\/.*\/([^\/]+)\/\1-([^\/]+)\.(tar\.gz|zip|whl)/;
+  const pypiMatch = url.match(pypiRegex);
+  
+  if (pypiMatch) {
+    return {
+      name: pypiMatch[1],
+      version: pypiMatch[2]
+    };
+  }
+  
   // Handle generic URLs with version patterns
   // Example: https://example.com/path/v1.2.3/filename.ext
   const versionRegex = /\/v?(\d+\.\d+\.\d+(-[^\s\/]*)?)\//;

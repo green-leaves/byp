@@ -4,6 +4,35 @@
 
 Byp is a command-line tool written in TypeScript that allows publishing and downloading large files to/from npm repositories by automatically chunking them into smaller pieces (maximum 64MB per chunk) to comply with npm's size limitations.
 
+## Project Structure
+
+```
+byp/
+├── src/
+│   ├── commands/       # CLI command implementations
+│   │   ├── publish.ts   # File publishing functionality
+│   │   ├── download.ts  # File downloading functionality
+│   │   ├── list.ts      # Package listing functionality
+│   │   ├── search.ts    # Package search functionality
+│   │   └── delete.ts    # Package deletion functionality
+│   ├── core/           # Core functionality
+│   │   ├── chunker.ts   # File chunking logic
+│   │   ├── metadata.ts  # Metadata generation
+│   │   ├── url-parser.ts # URL parsing logic
+│   │   ├── progress.ts  # Progress reporting utilities
+│   │   └── verification.ts # File verification utilities
+│   ├── npm/            # NPM integration
+│   │   ├── auth.ts      # Authentication handling
+│   │   ├── publisher.ts # Package publishing
+│   │   └── downloader.ts # Package downloading
+│   ├── constants.ts     # Project constants
+│   └── index.ts         # CLI entry point
+├── dist/               # Compiled output
+├── __tests__/          # Test files
+├── package.json        # Project configuration
+└── README.md           # Project documentation
+```
+
 ## Key Features
 
 - Publish large files to npm by automatically chunking them
@@ -16,6 +45,9 @@ Byp is a command-line tool written in TypeScript that allows publishing and down
 - CLI interface with intuitive commands
 - Support for custom package names and versions
 - Path specification for source files (local or remote)
+- Progress reporting for uploads and downloads
+- File integrity verification for published and downloaded files
+- Support for multiple URL patterns (GitHub, GitLab, npm, PyPI)
 
 ## Technical Specifications
 
@@ -61,6 +93,7 @@ Each package will include a metadata file (`byp-metadata.json`) with:
 - Current chunk index
 - Chunk hash for integrity verification
 - Original file size
+- File hash for overall integrity verification
 
 ## Implementation Plan
 

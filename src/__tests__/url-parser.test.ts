@@ -9,6 +9,30 @@ describe('URL Parser', () => {
     expect(result.version).toBe('0.203.5');
   });
   
+  test('should parse GitLab release URL correctly', () => {
+    const url = 'https://gitlab.com/group/project/-/releases/v1.0.0/downloads/file.zip';
+    const result = parseUrl(url);
+    
+    expect(result.name).toBe('project');
+    expect(result.version).toBe('1.0.0');
+  });
+  
+  test('should parse npm package URL correctly', () => {
+    const url = 'https://registry.npmjs.org/package-name/-/package-name-1.0.0.tgz';
+    const result = parseUrl(url);
+    
+    expect(result.name).toBe('package-name');
+    expect(result.version).toBe('1.0.0');
+  });
+  
+  test('should parse PyPI package URL correctly', () => {
+    const url = 'https://files.pythonhosted.org/packages/source/p/package-name/package-name-1.0.0.tar.gz';
+    const result = parseUrl(url);
+    
+    expect(result.name).toBe('package-name');
+    expect(result.version).toBe('1.0.0');
+  });
+  
   test('should parse generic URL with version', () => {
     const url = 'https://example.com/path/v1.2.3/filename.ext';
     const result = parseUrl(url);

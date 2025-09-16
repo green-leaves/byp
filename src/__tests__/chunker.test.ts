@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 describe('File Chunker', () => {
-  const testFilePath = path.join(process.cwd(), 'temp', 'test-file.txt');
+  const testFilePath = path.join(process.cwd(), 'temp', 'chunker-test-file.txt');
   
   beforeAll(() => {
     // Create a test directory
@@ -23,20 +23,18 @@ describe('File Chunker', () => {
       fs.unlinkSync(testFilePath);
     }
     
-    // Clean up temp directory
+    // Clean up temp directory only if it's empty
     const tempDir = path.join(process.cwd(), 'temp');
     if (fs.existsSync(tempDir)) {
-      // Remove all files in the directory first
       const files = fs.readdirSync(tempDir);
-      files.forEach(file => {
-        fs.unlinkSync(path.join(tempDir, file));
-      });
-      fs.rmdirSync(tempDir);
+      if (files.length === 0) {
+        fs.rmdirSync(tempDir);
+      }
     }
   });
   
   test('should chunk file correctly with 500 byte chunks', async () => {
-    const chunks = await chunkFile(testFilePath, 500);
+    const chunks = await chunkFile(testFilePath, 500, () => {});
     
     expect(chunks.length).toBe(2);
     expect(chunks[0].index).toBe(0);
@@ -52,7 +50,7 @@ describe('File Chunker', () => {
   });
   
   test('should handle file smaller than chunk size', async () => {
-    const chunks = await chunkFile(testFilePath, 2000);
+    const chunks = await chunkFile(testFilePath, 2000, () => {});
     
     expect(chunks.length).toBe(1);
     expect(chunks[0].index).toBe(0);

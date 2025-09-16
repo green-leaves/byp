@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { chunkFile } from '../core/chunker';
 import { generateMetadata } from '../core/metadata';
 import { parseUrl } from '../core/url-parser';
+import { formatBytes, ProgressBar } from '../core/progress';
 import { MAX_CHUNK_SIZE, DEFAULT_PACKAGE_NAME } from '../constants';
 import { publishPackage, createPackage } from '../npm/publisher';
 import { isNpmAuthenticated } from '../npm/auth';
@@ -33,7 +34,7 @@ Options:
 `)
   .action(async (options) => {
     try {
-      console.log('Starting publish command...');
+      console.log('🚀 Starting publish command...');
       let { name, version, path: filePath } = options;
       
       // Check if npm is authenticated
@@ -42,19 +43,20 @@ Options:
         process.exit(1);
       }
       
-      console.log(`Options: name=${name}, version=${version}, path=${filePath}`);
+      console.log(`📦 Package: ${name}-${version}`);
+      console.log(`📁 File path: ${filePath}`);
       
       // Check if path is a URL
       if (filePath && filePath.startsWith('http')) {
-        console.log('Detected URL, downloading file...');
+        console.log('🌐 Detected URL, downloading file...');
         // Parse URL to extract name and version if not provided
         const urlInfo = parseUrl(filePath);
         if (!name) name = urlInfo.name;
         if (!version) version = urlInfo.version;
-        console.log(`Parsed from URL: name=${name}, version=${version}`);
+        console.log(`🔗 Parsed from URL: ${name}-${version}`);
         
         // Download file from URL to temporary location
-        console.log(`Downloading file from ${filePath}`);
+        console.log(`📥 Downloading file from ${filePath}`);
         const response = await axios({
           method: 'GET',
           url: filePath,
@@ -79,7 +81,7 @@ Options:
           writer.on('error', reject);
         });
         
-        console.log(`File downloaded to ${filePath}`);
+        console.log(`✅ File downloaded to ${filePath}`);
       }
       
       // Validate required parameters
@@ -88,7 +90,7 @@ Options:
         process.exit(1);
       }
       
-      console.log(`Validated parameters: name=${name}, version=${version}, path=${filePath}`);
+      console.log(`✅ Validated parameters: ${name}-${version}`);
       
       // Check if file exists
       if (!fs.existsSync(filePath)) {
@@ -131,34 +133,42 @@ Options:
       const platformName = name + platformSuffix;
       const platformVersion = version;
       
-      console.log(`Detected platform: ${platformSuffix || 'generic'}`);
-      console.log(`Package name will be: ${platformName}-${platformVersion}`);
+      console.log(`🖥️  Detected platform: ${platformSuffix || 'generic'}`);
+      console.log(`🏷️  Package name will be: ${platformName}-${platformVersion}`);
+      
+      // Get file size for display
+      const fileStats = fs.statSync(filePath);
+      console.log(`📊 File size: ${formatBytes(fileStats.size)}`);
       
       // Chunk the file
-      console.log(`Chunking file ${filePath}`);
-      const chunks = await chunkFile(filePath, MAX_CHUNK_SIZE); // 64MB chunks
+      console.log(`🔧 Chunking file ${filePath}`);
+      const chunks = await chunkFile(filePath, MAX_CHUNK_SIZE, (current, total) => {
+        const percentage = Math.floor((current / total) * 100);
+        process.stdout.write(`\r🔧 Chunking: ${percentage}% (${formatBytes(current)}/${formatBytes(total)})`);
+      });
+      console.log(); // New line after progress
       
-      console.log(`File chunked into ${chunks.length} pieces`);
+      console.log(`✅ File chunked into ${chunks.length} pieces`);
       
       // Generate metadata for the file
-      console.log('Generating metadata');
-      const metadata = generateMetadata(filePath, chunks.length);
+      console.log('📝 Generating metadata');
+      const metadata = await generateMetadata(filePath, chunks.length);
       
-      console.log(`Package name: ${platformName}, version: ${platformVersion}`);
+      console.log(`🏷️  Package name: ${platformName}, version: ${platformVersion}`);
       
       // If file is smaller than chunk size, upload directly without chunking
       if (chunks.length <= 1) {
-        console.log('File is smaller than chunk size, uploading directly...');
+        console.log('📦 File is smaller than chunk size, uploading directly...');
         
         // For small files, we still create chunks but there will be only one
         // We'll use the main package to store the file directly
         const mainTagName = `${platformName}-${platformVersion}`;
         const packageName = DEFAULT_PACKAGE_NAME;
-        console.log(`Creating package with version ${platformVersion}-${platformName}-${Date.now()} and tag ${mainTagName}`);
+        console.log(`📤 Creating package with version ${platformVersion}-${platformName}-${Date.now()} and tag ${mainTagName}`);
         
         // Generate metadata for the single chunk/file
         if (chunks.length === 1) {
-          generateMetadata(filePath, chunks.length, 0, chunks[0].filePath);
+          await generateMetadata(filePath, chunks.length, 0, chunks[0].filePath);
         }
         
         const mainPackageDir = createPackage(
@@ -169,38 +179,43 @@ Options:
           path.join(process.cwd(), 'temp', chunks.length === 1 ? 'metadata-chunk-0.json' : 'metadata.json')
         );
         
-        const success = await publishPackage(mainPackageDir, mainTagName);
+        console.log('📤 Publishing package...');
+        const success = await publishPackage(mainPackageDir, mainTagName, (message) => {
+          console.log(`  ${message}`);
+        });
         
         if (!success) {
-          console.error('Failed to publish main package');
+          console.error('❌ Failed to publish main package');
           process.exit(1);
         }
         
         // Clean up temporary package directory
         fs.rmSync(mainPackageDir, { recursive: true, force: true });
         
-        console.log(`Successfully published ${platformName}-${platformVersion} (single file, no chunking)`);
+        console.log(`🎉 Successfully published ${platformName}-${platformVersion} (single file, no chunking)`);
         return;
       }
       
       // For large files, use the chunking approach
       // Publish each chunk to npm
-      console.log('Publishing chunks to npm...');
+      console.log('📤 Publishing chunks to npm...');
       const packageName = DEFAULT_PACKAGE_NAME;
+      
+      // Create progress bar for chunk publishing
+      const chunkProgressBar = new ProgressBar(chunks.length, 'Chunks:', 30, (value) => value.toString());
+      let publishedChunks = 0;
       
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
         const chunkTagName = `${platformName}-${platformVersion}-chunk-${String(i + 1).padStart(3, '0')}`;
         
-        console.log(`Processing chunk ${i + 1}/${chunks.length} with tag ${chunkTagName}`);
-        
         // Generate metadata for this specific chunk
-        const chunkMetadata = generateMetadata(filePath, chunks.length, i, chunk.filePath);
+        const chunkMetadata = await generateMetadata(filePath, chunks.length, i, chunk.filePath);
         
         // Create package for this chunk with a unique version number
         // Using format: <package_version>-<package_name>-<timestamp>
         const chunkVersion = `${platformVersion}-${platformName}-${Date.now()}`;
-        console.log(`Creating package with version ${chunkVersion} and tag ${chunkTagName}`);
+        console.log(`📤 Creating package with version ${chunkVersion} and tag ${chunkTagName}`);
         
         const packageDir = createPackage(
           packageName,
@@ -211,22 +226,29 @@ Options:
         );
         
         // Publish the package
-        console.log(`Publishing chunk ${i + 1}/${chunks.length} with tag ${chunkTagName}...`);
-        const success = await publishPackage(packageDir, chunkTagName);
+        const success = await publishPackage(packageDir, chunkTagName, (message) => {
+          // Don't print individual publish messages to keep the progress bar clean
+        });
         
         if (!success) {
-          console.error(`Failed to publish chunk ${i + 1}`);
+          console.error(`❌ Failed to publish chunk ${i + 1}`);
           process.exit(1);
         }
         
         // Clean up temporary package directory
         fs.rmSync(packageDir, { recursive: true, force: true });
+        
+        // Update progress bar
+        publishedChunks++;
+        chunkProgressBar.update(publishedChunks);
       }
       
+      console.log(); // New line after progress bar
+      
       // Publish main package with metadata
-      console.log('Publishing main package...');
+      console.log('📤 Publishing main package...');
       const mainTagName = `${platformName}-${platformVersion}`;
-      console.log(`Creating main package with version ${platformVersion}-${platformName}-${Date.now()} and tag ${mainTagName}`);
+      console.log(`📤 Creating main package with version ${platformVersion}-${platformName}-${Date.now()} and tag ${mainTagName}`);
       
       const mainPackageDir = createPackage(
         packageName,
@@ -236,17 +258,20 @@ Options:
         path.join(process.cwd(), 'temp', 'metadata.json')
       );
       
-      const success = await publishPackage(mainPackageDir, mainTagName);
+      console.log('📤 Publishing main package...');
+      const success = await publishPackage(mainPackageDir, mainTagName, (message) => {
+        console.log(`  ${message}`);
+      });
       
       if (!success) {
-        console.error('Failed to publish main package');
+        console.error('❌ Failed to publish main package');
         process.exit(1);
       }
       
       // Clean up temporary package directory
       fs.rmSync(mainPackageDir, { recursive: true, force: true });
       
-      console.log(`Successfully published ${platformName}-${platformVersion} with ${chunks.length} chunks`);
+      console.log(`🎉 Successfully published ${platformName}-${platformVersion} with ${chunks.length} chunks`);
     } catch (error) {
       console.error('Error:', error);
       process.exit(1);

@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 describe('Manual Chunking Test', () => {
-  const testFilePath = path.join(process.cwd(), 'large-test.txt');
+  const testFilePath = path.join(process.cwd(), 'manual-chunking-test.txt');
   
   test('should chunk file and create chunk files', async () => {
     // Create temp directory if it doesn't exist
@@ -20,7 +20,7 @@ describe('Manual Chunking Test', () => {
     }
     
     console.log(`Chunking file: ${testFilePath}`);
-    const chunks = await chunkFile(testFilePath, 50); // Small chunk size for testing
+    const chunks = await chunkFile(testFilePath, 50, () => {}); // Small chunk size for testing
     
     console.log(`Created ${chunks.length} chunks`);
     

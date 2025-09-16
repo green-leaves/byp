@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import { calculateFileHash } from './verification';
 
 export interface Metadata {
   originalFileName: string;
@@ -8,6 +9,7 @@ export interface Metadata {
   chunkIndex?: number;
   chunkHash?: string;
   originalFileSize: number;
+  fileHash?: string; // Hash of the entire original file for verification
 }
 
 /**
@@ -18,12 +20,12 @@ export interface Metadata {
  * @param chunkPath Path to chunk file (optional)
  * @returns Metadata object
  */
-export function generateMetadata(
+export async function generateMetadata(
   filePath: string, 
   totalChunks: number, 
   chunkIndex?: number, 
   chunkPath?: string
-): Metadata {
+): Promise<Metadata> {
   const fileStats = fs.statSync(filePath);
   const originalFileName = path.basename(filePath);
   const originalFileSize = fileStats.size;
@@ -43,6 +45,15 @@ export function generateMetadata(
     const hash = crypto.createHash('sha256');
     hash.update(chunkData);
     metadata.chunkHash = hash.digest('hex');
+  }
+  
+  // For the main file (when chunkIndex is undefined), add file hash for verification
+  if (chunkIndex === undefined) {
+    try {
+      metadata.fileHash = await calculateFileHash(filePath);
+    } catch (error) {
+      console.error('Error calculating file hash:', error);
+    }
   }
   
   // Write metadata to file

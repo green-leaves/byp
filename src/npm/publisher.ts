@@ -4,14 +4,16 @@ import * as os from 'os';
 import { execSync } from 'child_process';
 import { isNpmAuthenticated } from './auth';
 import { DEFAULT_PACKAGE_NAME } from '../constants';
+import { formatBytes } from '../core/progress';
 
 /**
  * Publish a package to npm
  * @param packagePath Path to the package directory
  * @param tagName Tag name for the package
+ * @param onProgress Optional progress callback
  * @returns boolean indicating success
  */
-export async function publishPackage(packagePath: string, tagName: string): Promise<boolean> {
+export async function publishPackage(packagePath: string, tagName: string, onProgress?: (message: string) => void): Promise<boolean> {
   try {
     // Check if npm is authenticated
     if (!isNpmAuthenticated()) {
@@ -38,14 +40,19 @@ export async function publishPackage(packagePath: string, tagName: string): Prom
       throw new Error(`Invalid package.json: ${parseError}`);
     }
     
-    // Log package info for debugging
-    console.log(`Publishing package: ${packageJson.name}@${packageJson.version}`);
-    console.log(`Package directory: ${packagePath}`);
-    console.log(`Tag: ${tagName}`);
-    
-    // List files in package directory for debugging
+    // Get file size for progress reporting
     const files = fs.readdirSync(packagePath);
-    console.log(`Files in package directory: ${files.join(', ')}`);
+    let totalSize = 0;
+    files.forEach(file => {
+      const filePath = path.join(packagePath, file);
+      if (fs.statSync(filePath).isFile()) {
+        totalSize += fs.statSync(filePath).size;
+      }
+    });
+    
+    if (onProgress) {
+      onProgress(`Publishing ${tagName} (${formatBytes(totalSize)})...`);
+    }
     
     // Change to the package directory
     const originalDir = process.cwd();
@@ -58,8 +65,9 @@ export async function publishPackage(packagePath: string, tagName: string): Prom
         stdio: ['pipe', 'pipe', 'pipe']
       });
       
-      console.log(`Published package with tag ${tagName}`);
-      console.log(result);
+      if (onProgress) {
+        onProgress(`Published package with tag ${tagName}`);
+      }
       
       return true;
     } finally {

@@ -2,6 +2,8 @@ import { Command } from 'commander';
 import { downloadPackage, listPackageTags, getVersionFromTag } from '../npm/downloader';
 import { isNpmAuthenticated } from '../npm/auth';
 import { DEFAULT_PACKAGE_NAME } from '../constants';
+import { verifyFileIntegrity } from '../core/verification';
+import { ProgressBar, formatBytes } from '../core/progress';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -35,7 +37,7 @@ Options:
         process.exit(1);
       }
       
-      console.log(`Downloading package ${nameVersion}`);
+      console.log(`🚀 Starting download of package ${nameVersion}`);
       
       // Split name and version
       const lastDashIndex = nameVersion.lastIndexOf('-');
@@ -59,14 +61,14 @@ Options:
         process.exit(1);
       }
       
-      console.log(`Found ${packageTags.length} tags for package ${name}-${version}`);
+      console.log(`📋 Found ${packageTags.length} tags for package ${name}-${version}`);
       
       // Check if this is a chunked package or a single file package
       const chunkTags = packageTags.filter(tag => tag.includes('-chunk-'));
       
       if (chunkTags.length === 0) {
         // This is a single file package (not chunked)
-        console.log('Downloading single file package...');
+        console.log('📦 Downloading single file package...');
         const mainTag = `${name}-${version}`;
         
         if (!packageTags.includes(mainTag)) {
@@ -75,10 +77,12 @@ Options:
         }
         
         // Download main package
-        console.log('Downloading package...');
+        console.log('📥 Downloading package...');
         // For single file packages, we need to get the actual version from the tag
         const actualVersion = await getVersionFromTag(packageName, mainTag);
-        const mainPackagePath = await downloadPackage(packageName, actualVersion, mainTag);
+        const mainPackagePath = await downloadPackage(packageName, actualVersion, mainTag, (message) => {
+          console.log(`  ${message}`);
+        });
         
         // Find the main file in the package (not metadata)
         const mainPackageFiles = fs.readdirSync(mainPackagePath);
@@ -93,7 +97,7 @@ Options:
           process.exit(1);
         }
         
-        // Read metadata to get original filename
+        // Read metadata to get original filename and hash
         const metadataFile = mainPackageFiles.find(file => 
           file === 'byp-metadata.json' || file.startsWith('metadata-chunk-')
         );
@@ -103,6 +107,21 @@ Options:
           const metadataPath = path.join(mainPackagePath, metadataFile);
           const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
           originalFileName = metadata.originalFileName || mainFile;
+          
+          // Verify file integrity if hash is available
+          if (metadata.fileHash) {
+            console.log('🔍 Verifying file integrity...');
+            const isIntegrityOk = await verifyFileIntegrity(
+              path.join(mainPackagePath, mainFile), 
+              metadata.fileHash
+            );
+            
+            if (!isIntegrityOk) {
+              console.warn('⚠️  Warning: File integrity check failed for downloaded file');
+            } else {
+              console.log('✅ File integrity verified successfully');
+            }
+          }
         }
         
         // Create output directory if it doesn't exist
@@ -113,15 +132,15 @@ Options:
         
         // Copy the file to the output location
         const sourcePath = path.join(mainPackagePath, mainFile);
-        const outputFile = path.join(outputPath, originalFileName);
-        fs.copyFileSync(sourcePath, outputFile);
+        const outputFileSingle = path.join(outputPath, originalFileName);
+        fs.copyFileSync(sourcePath, outputFileSingle);
         
-        console.log(`Successfully downloaded ${originalFileName} to ${outputFile}`);
+        console.log(`🎉 Successfully downloaded ${originalFileName} to ${outputFileSingle}`);
         return;
       }
       
       // This is a chunked package, use the existing chunked download logic
-      console.log('Downloading chunked package...');
+      console.log('📦 Downloading chunked package...');
       
       // Find the main package tag and chunk tags
       const mainTag = `${name}-${version}`;
@@ -132,10 +151,12 @@ Options:
       }
       
       // Download main package to get metadata
-      console.log('Downloading main package...');
+      console.log('📥 Downloading main package for metadata...');
       // Get the actual version associated with the main tag
       const mainVersion = await getVersionFromTag(packageName, mainTag);
-      const mainPackagePath = await downloadPackage(packageName, mainVersion, mainTag);
+      const mainPackagePath = await downloadPackage(packageName, mainVersion, mainTag, (message) => {
+        console.log(`  ${message}`);
+        });
       
       // Find metadata file in main package
       const mainPackageFiles = fs.readdirSync(mainPackagePath);
@@ -148,10 +169,14 @@ Options:
         process.exit(1);
       }
       
-      // Read metadata to get original filename
+      // Read metadata to get original filename and file hash
       const metadataPath = path.join(mainPackagePath, metadataFile);
       const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
       const originalFileName = metadata.originalFileName;
+      const expectedFileHash = metadata.fileHash;
+      const totalChunks = metadata.totalChunks;
+      
+      console.log(`📋 Package info: ${originalFileName} (${formatBytes(metadata.originalFileSize)}) with ${totalChunks} chunks`);
       
       // Create output directory if it doesn't exist
       const outputPath = options.output || process.cwd();
@@ -160,14 +185,19 @@ Options:
       }
       
       // Download all chunks
-      console.log('Downloading chunks...');
+      console.log('📥 Downloading chunks...');
       const chunkData: { index: number; data: Buffer }[] = [];
       
+      // Create progress bar for chunk downloads
+      const chunkProgressBar = new ProgressBar(totalChunks, 'Chunks:', 30, (value) => value.toString());
+      let downloadedChunks = 0;
+      
       for (const tag of chunkTags) {
-        console.log(`Downloading chunk with tag ${tag}...`);
         // Get the actual version associated with this tag
         const chunkVersion = await getVersionFromTag(packageName, tag);
-        const chunkPackagePath = await downloadPackage(packageName, chunkVersion, tag);
+        const chunkPackagePath = await downloadPackage(packageName, chunkVersion, tag, (message) => {
+          // Don't print individual download messages to keep the progress bar clean
+        });
         
         // Find the chunk file in the package
         const chunkPackageFiles = fs.readdirSync(chunkPackagePath);
@@ -187,8 +217,63 @@ Options:
         const chunkIndex = tagParts[1]; // <index>
         const index = parseInt(chunkIndex, 10) - 1;
         
+        // Verify chunk integrity if metadata is available
+        const chunkMetadataFile = chunkPackageFiles.find(file => file.startsWith('metadata-chunk-'));
+        if (chunkMetadataFile) {
+          const chunkMetadataPath = path.join(chunkPackagePath, chunkMetadataFile);
+          const chunkMetadata = JSON.parse(fs.readFileSync(chunkMetadataPath, 'utf8'));
+          
+          if (chunkMetadata.chunkHash) {
+            // We would verify the chunk hash here, but we need to calculate it
+            // For now, we'll just log that we're verifying
+          }
+        }
+        
         chunkData.push({ index, data });
+        
+        // Update progress bar
+        downloadedChunks++;
+        chunkProgressBar.update(downloadedChunks);
       }
+      
+      console.log(); // New line after progress bar
+      
+      // Sort chunks by index
+      chunkData.sort((a, b) => a.index - b.index);
+      
+      // Reassemble file
+      console.log('🔧 Reassembling file...');
+      const outputFileRes = path.join(outputPath, originalFileName);
+      const writeStreamRes = fs.createWriteStream(outputFileRes);
+      
+      // Create progress bar for reassembly
+      const totalSize = metadata.originalFileSize;
+      const reassemblyProgressBar = new ProgressBar(totalSize, 'Reassembling:', 30, formatBytes);
+      let reassembledBytes = 0;
+      
+      for (const chunk of chunkData) {
+        writeStreamRes.write(chunk.data);
+        reassembledBytes += chunk.data.length;
+        reassemblyProgressBar.update(reassembledBytes);
+      }
+      
+      writeStreamRes.end();
+      
+      console.log(); // New line after progress bar
+      
+      // Verify reassembled file integrity if hash is available
+      if (expectedFileHash) {
+        console.log('🔍 Verifying reassembled file integrity...');
+        const isIntegrityOk = await verifyFileIntegrity(outputFileRes, expectedFileHash);
+        
+        if (!isIntegrityOk) {
+          console.warn('⚠️  Warning: File integrity check failed for reassembled file');
+        } else {
+          console.log('✅ Reassembled file integrity verified successfully');
+        }
+      }
+      
+      console.log(`🎉 Successfully downloaded and reassembled ${originalFileName} to ${outputFileRes}`);
       
       // Sort chunks by index
       chunkData.sort((a, b) => a.index - b.index);
@@ -203,6 +288,18 @@ Options:
       }
       
       writeStream.end();
+      
+      // Verify reassembled file integrity if hash is available
+      if (expectedFileHash) {
+        console.log('Verifying reassembled file integrity...');
+        const isIntegrityOk = await verifyFileIntegrity(outputFile, expectedFileHash);
+        
+        if (!isIntegrityOk) {
+          console.warn('Warning: File integrity check failed for reassembled file');
+        } else {
+          console.log('Reassembled file integrity verified successfully');
+        }
+      }
       
       console.log(`Successfully downloaded and reassembled ${originalFileName} to ${outputFile}`);
     } catch (error) {

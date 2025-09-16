@@ -4,23 +4,30 @@ import * as os from 'os';
 import { execSync } from 'child_process';
 import { isNpmAuthenticated } from './auth';
 import { DEFAULT_PACKAGE_NAME } from '../constants';
+import { formatBytes } from '../core/progress';
 
 /**
  * Download a package from npm
  * @param packageName Name of the package (@byp/packages)
  * @param version Version of the package (can be a tag)
  * @param tagName Tag name for the specific chunk (used for logging)
+ * @param onProgress Optional progress callback
  * @returns Path to the downloaded package directory
  */
 export async function downloadPackage(
   packageName: string,
   version: string,
-  tagName: string
+  tagName: string,
+  onProgress?: (message: string) => void
 ): Promise<string> {
   try {
     // Check if npm is authenticated
     if (!isNpmAuthenticated()) {
       throw new Error('npm is not authenticated. Please run "npm login" first.');
+    }
+    
+    if (onProgress) {
+      onProgress(`Downloading package ${packageName}@${version}...`);
     }
     
     // Create a temporary directory for the downloaded package
@@ -37,6 +44,10 @@ export async function downloadPackage(
         encoding: 'utf8',
         stdio: ['pipe', 'pipe', 'pipe']
       });
+      
+      if (onProgress) {
+        onProgress(`Downloaded package ${packageName}@${version}`);
+      }
       
       // Return the path to the installed package
       const packageDir = path.join(tempDir, 'node_modules', packageName);
