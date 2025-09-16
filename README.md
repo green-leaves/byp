@@ -6,7 +6,6 @@ Byp is a powerful command-line tool that enables publishing and downloading larg
 
 - **File Chunking**: Automatically splits large files into 64MB chunks for npm compatibility
 - **Progress Reporting**: Real-time progress bars with transfer speeds and ETA
-- **Resume Capability**: Continue interrupted uploads and downloads
 - **Package Verification**: SHA256 hash verification for file integrity
 - **Enhanced URL Parsing**: Support for GitHub, GitLab, npm, and PyPI URLs
 - **Configurable Package Name**: Customize the package scope for publishing/downloading
@@ -15,7 +14,7 @@ Byp is a powerful command-line tool that enables publishing and downloading larg
 ## Installation
 
 ```bash
-npm install -g byp
+npm install -g @byp/byp
 ```
 
 ## Usage
@@ -43,18 +42,19 @@ byp package search keyword
 
 # Delete a package
 byp package delete my-app-1.0.0
-
-# Verify file integrity
-byp package verify ./my-file.zip
-
-# Clean up temporary files
-byp package clean
 ```
 
 ## Options
 
-- `-r, --resume`: Resume interrupted operations
-- `-o, --output`: Specify output directory for downloads
+The publish command supports the following options:
+- `-n, --name <name>`: Name of the package to be published
+- `-v, --version <version>`: Version of the package
+- `-p, --path <path>`: Path to the file or URL to download
+
+The download command supports the following options:
+- `-o, --output <path>`: Output path for the downloaded file
+
+The search command searches for packages by keyword within published packages.
 
 ## Configuration
 
