@@ -85,7 +85,7 @@ export async function publishPackage(packagePath: string, tagName: string, onPro
  * @param packageName Name of the package (e.g., @byp/packages)
  * @param version Version of the package (must be valid semver)
  * @param tagName Tag name for this specific chunk
- * @param chunkPath Path to the chunk file
+ * @param chunkPath Path to the chunk file (optional for metadata-only packages)
  * @param metadataPath Path to the metadata file
  * @returns Path to the created package directory
  */
@@ -93,31 +93,32 @@ export function createPackage(
   packageName: string,
   version: string,
   tagName: string,
-  chunkPath: string,
+  chunkPath: string | null,
   metadataPath: string
 ): string {
   // Create a temporary directory for the package
   const tempDir = path.join(os.tmpdir(), `byp-package-${Date.now()}`);
   fs.mkdirSync(tempDir, { recursive: true });
   
-  // Copy chunk file to package directory
-  const chunkFileName = path.basename(chunkPath);
-  fs.copyFileSync(chunkPath, path.join(tempDir, chunkFileName));
+  let chunkFileName = '';
+  
+  // Copy chunk file to package directory if provided
+  if (chunkPath) {
+    chunkFileName = path.basename(chunkPath);
+    fs.copyFileSync(chunkPath, path.join(tempDir, chunkFileName));
+  }
   
   // Copy metadata file to package directory
   const metadataFileName = path.basename(metadataPath);
   fs.copyFileSync(metadataPath, path.join(tempDir, metadataFileName));
   
   // Create package.json
-  const packageJson = {
+  const packageJson: any = {
     name: packageName,
     version: version,
-    description: `Chunk ${tagName} of a large file published with byp`,
-    main: chunkFileName,
-    files: [
-      chunkFileName,
-      metadataFileName
-    ],
+    description: chunkPath 
+      ? `Chunk ${tagName} of a large file published with byp` 
+      : `Main package for ${tagName} published with byp`,
     keywords: [
       "byp",
       "chunk",
@@ -129,6 +130,17 @@ export function createPackage(
       access: "public"
     }
   };
+  
+  // Only include main and files if chunkPath is provided
+  if (chunkPath) {
+    packageJson.main = chunkFileName;
+    packageJson.files = [
+      chunkFileName,
+      metadataFileName
+    ];
+  } else {
+    packageJson.files = [metadataFileName];
+  }
   
   fs.writeFileSync(
     path.join(tempDir, 'package.json'),

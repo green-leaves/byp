@@ -254,7 +254,7 @@ Options:
         packageName,
         `${platformVersion}-${platformName}-${Date.now()}`, // Main package version with package info and timestamp
         mainTagName,
-        filePath,
+        null, // For main package of large files, only include metadata
         path.join(process.cwd(), 'temp', 'metadata.json')
       );
       
