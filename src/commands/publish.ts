@@ -2,7 +2,7 @@ import { Command } from 'commander';
 import { chunkFile } from '../core/chunker';
 import { generateMetadata } from '../core/metadata';
 import { parseUrl } from '../core/url-parser';
-import { MAX_CHUNK_SIZE } from '../constants';
+import { MAX_CHUNK_SIZE, DEFAULT_PACKAGE_NAME } from '../constants';
 import { publishPackage, createPackage } from '../npm/publisher';
 import { isNpmAuthenticated } from '../npm/auth';
 import * as fs from 'fs';
@@ -136,7 +136,7 @@ export const publish = new Command('publish')
         // For small files, we still create chunks but there will be only one
         // We'll use the main package to store the file directly
         const mainTagName = `${platformName}-${platformVersion}`;
-        const packageName = '@byp/packages';
+        const packageName = DEFAULT_PACKAGE_NAME;
         console.log(`Creating package with version ${platformVersion}-${platformName}-${Date.now()} and tag ${mainTagName}`);
         
         // Generate metadata for the single chunk/file
@@ -169,7 +169,7 @@ export const publish = new Command('publish')
       // For large files, use the chunking approach
       // Publish each chunk to npm
       console.log('Publishing chunks to npm...');
-      const packageName = '@byp/packages';
+      const packageName = DEFAULT_PACKAGE_NAME;
       
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];

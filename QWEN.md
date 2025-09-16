@@ -83,10 +83,9 @@ Each package will include a metadata file (`byp-metadata.json`) with:
 
 ### Phase 3: Advanced Features
 1. Progress reporting for uploads and downloads
-2. Resume capability for failed uploads/downloads
-3. Verification of published packages
-4. Verification of downloaded and reassembled files
-5. Support for additional URL patterns
+2. Verification of published packages
+3. Verification of downloaded and reassembled files
+4. Support for additional URL patterns
 
 ## Dependencies
 

@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { execSync } from 'child_process';
 import { isNpmAuthenticated } from './auth';
+import { DEFAULT_PACKAGE_NAME } from '../constants';
 
 /**
  * Download a package from npm
@@ -117,8 +118,9 @@ export async function searchPackages(keyword: string): Promise<string[]> {
       throw new Error('npm is not authenticated. Please run "npm login" first.');
     }
     
-    // Search for packages
-    const result = execSync(`npm search ${keyword} --json`, { 
+    // Search for packages within our scope
+    const scopedKeyword = `${DEFAULT_PACKAGE_NAME} ${keyword}`;
+    const result = execSync(`npm search ${scopedKeyword} --json`, { 
       encoding: 'utf8'
     });
     

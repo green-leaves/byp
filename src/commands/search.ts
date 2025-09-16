@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { searchPackages } from '../npm/downloader';
 import { isNpmAuthenticated } from '../npm/auth';
+import { DEFAULT_PACKAGE_NAME } from '../constants';
 
 export const search = new Command('search')
   .description('Search for packages by keyword')

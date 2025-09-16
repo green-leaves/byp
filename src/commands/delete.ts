@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { deletePackageTag, listPackageTags } from '../npm/downloader';
 import { isNpmAuthenticated } from '../npm/auth';
+import { DEFAULT_PACKAGE_NAME } from '../constants';
 
 export const del = new Command('delete')
   .description('Delete a published package')
@@ -26,7 +27,7 @@ export const del = new Command('delete')
       const version = nameVersion.substring(lastDashIndex + 1);
       
       // Get all tags for this package
-      const packageName = '@byp/packages';
+      const packageName = DEFAULT_PACKAGE_NAME;
       const allTags = await listPackageTags(packageName);
       
       // Filter tags that belong to this package

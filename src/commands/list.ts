@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { listPackageTags } from '../npm/downloader';
 import { isNpmAuthenticated } from '../npm/auth';
+import { DEFAULT_PACKAGE_NAME } from '../constants';
 import * as path from 'path';
 
 export const list = new Command('list')
@@ -16,7 +17,7 @@ export const list = new Command('list')
       console.log('Listing published packages...');
       
       // Get all tags for @byp/packages
-      const packageName = '@byp/packages';
+      const packageName = DEFAULT_PACKAGE_NAME;
       const tags = await listPackageTags(packageName);
       
       if (tags.length === 0) {

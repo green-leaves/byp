@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { execSync } from 'child_process';
 import { isNpmAuthenticated } from './auth';
+import { DEFAULT_PACKAGE_NAME } from '../constants';
 
 /**
  * Publish a package to npm
@@ -73,7 +74,7 @@ export async function publishPackage(packagePath: string, tagName: string): Prom
 
 /**
  * Create a package.json file for a chunk
- * @param packageName Name of the package (@byp/packages)
+ * @param packageName Name of the package (e.g., @byp/packages)
  * @param version Version of the package (must be valid semver)
  * @param tagName Tag name for this specific chunk
  * @param chunkPath Path to the chunk file

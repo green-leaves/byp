@@ -9,6 +9,7 @@ Byp is a powerful command-line tool that enables publishing and downloading larg
 - **Resume Capability**: Continue interrupted uploads and downloads
 - **Package Verification**: SHA256 hash verification for file integrity
 - **Enhanced URL Parsing**: Support for GitHub, GitLab, npm, and PyPI URLs
+- **Configurable Package Name**: Customize the package scope for publishing/downloading
 - **Cross-Platform**: Works on Windows, macOS, and Linux
 
 ## Installation
@@ -54,6 +55,10 @@ byp package clean
 
 - `-r, --resume`: Resume interrupted operations
 - `-o, --output`: Specify output directory for downloads
+
+## Configuration
+
+The package name used for publishing and downloading chunked files can be configured by modifying the `DEFAULT_PACKAGE_NAME` constant in `src/constants.ts`.
 
 ## License
 

@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { downloadPackage, listPackageTags, getVersionFromTag } from '../npm/downloader';
 import { isNpmAuthenticated } from '../npm/auth';
+import { DEFAULT_PACKAGE_NAME } from '../constants';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -29,7 +30,7 @@ export const download = new Command('download')
       const version = nameVersion.substring(lastDashIndex + 1);
       
       // Get all tags for this package
-      const packageName = '@byp/packages';
+      const packageName = DEFAULT_PACKAGE_NAME;
       const allTags = await listPackageTags(packageName);
       
       // Filter tags that belong to this package
