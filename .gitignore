@@ -27,3 +27,15 @@ Thumbs.db
 # Editor files
 *.swp
 *~
+
+# Byp specific temporary folders
+temp/
+.downloads/
+downloads/
+*.dmg
+*.exe
+*.deb
+*.rpm
+*.appimage
+*.pkg
+*.msi
