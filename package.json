@@ -1,13 +1,13 @@
 {
   "name": "@byp/byp",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "A CLI tool for publishing and downloading large files to/from npm repositories by chunking them into smaller pieces",
   "main": "dist/index.js",
   "bin": {
     "byp": "dist/index.js"
   },
   "scripts": {
-    "clean": "rm -rf dist",
+    "clean": "rm -rf dist || true",
     "build": "npm run clean && tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",

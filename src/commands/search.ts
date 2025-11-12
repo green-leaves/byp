@@ -24,11 +24,7 @@ Options:
 `)
   .action(async (keyword) => {
     try {
-      // Check if npm is authenticated
-      if (!isNpmAuthenticated()) {
-        console.error('Error: npm is not authenticated. Please run "npm login" first.');
-        process.exit(1);
-      }
+
       
       console.log(`Searching for packages with keyword: ${keyword}`);
       

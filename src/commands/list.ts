@@ -17,11 +17,7 @@ Description:
 `)
   .action(async () => {
     try {
-      // Check if npm is authenticated
-      if (!isNpmAuthenticated()) {
-        console.error('Error: npm is not authenticated. Please run "npm login" first.');
-        process.exit(1);
-      }
+
       
       console.log('Listing published packages...');
       

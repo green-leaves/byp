@@ -31,11 +31,7 @@ Options:
 `)
   .action(async (nameVersion, options) => {
     try {
-      // Check if npm is authenticated
-      if (!isNpmAuthenticated()) {
-        console.error('Error: npm is not authenticated. Please run "npm login" first.');
-        process.exit(1);
-      }
+
       
       console.log(`🚀 Starting download of package ${nameVersion}`);
       

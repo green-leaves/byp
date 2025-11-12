@@ -21,34 +21,29 @@ export async function downloadPackage(
   onProgress?: (message: string) => void
 ): Promise<string> {
   try {
-    // Check if npm is authenticated
-    if (!isNpmAuthenticated()) {
-      throw new Error('npm is not authenticated. Please run "npm login" first.');
-    }
-    
     if (onProgress) {
       onProgress(`Downloading package ${packageName}@${version}...`);
     }
-    
+
     // Create a temporary directory for the downloaded package
     const tempDir = path.join(os.tmpdir(), `byp-download-${Date.now()}`);
     fs.mkdirSync(tempDir, { recursive: true });
-    
+
     // Change to the temp directory
     const originalDir = process.cwd();
     process.chdir(tempDir);
-    
+
     try {
       // Install the specific package with the version/tag
-      execSync(`npm install ${packageName}@${version}`, { 
+      execSync(`npm install ${packageName}@${version}`, {
         encoding: 'utf8',
         stdio: ['pipe', 'pipe', 'pipe']
       });
-      
+
       if (onProgress) {
         onProgress(`Downloaded package ${packageName}@${version}`);
       }
-      
+
       // Return the path to the installed package
       const packageDir = path.join(tempDir, 'node_modules', packageName);
       return packageDir;
@@ -70,21 +65,16 @@ export async function downloadPackage(
  */
 export async function getVersionFromTag(packageName: string, tagName: string): Promise<string> {
   try {
-    // Check if npm is authenticated
-    if (!isNpmAuthenticated()) {
-      throw new Error('npm is not authenticated. Please run "npm login" first.');
-    }
-    
     // Get package info from npm registry
-    const result = execSync(`npm view ${packageName} dist-tags --json`, { 
+    const result = execSync(`npm view ${packageName} dist-tags --json`, {
       encoding: 'utf8'
     });
-    
+
     const distTags = JSON.parse(result);
     if (distTags[tagName]) {
       return distTags[tagName];
     }
-    
+
     throw new Error(`Tag ${tagName} not found in dist-tags`);
   } catch (error) {
     console.error('Error getting version from tag:', error);
@@ -99,16 +89,11 @@ export async function getVersionFromTag(packageName: string, tagName: string): P
  */
 export async function listPackageTags(packageName: string): Promise<string[]> {
   try {
-    // Check if npm is authenticated
-    if (!isNpmAuthenticated()) {
-      throw new Error('npm is not authenticated. Please run "npm login" first.');
-    }
-    
     // Get package info from npm registry
-    const result = execSync(`npm view ${packageName} dist-tags --json`, { 
+    const result = execSync(`npm view ${packageName} dist-tags --json`, {
       encoding: 'utf8'
     });
-    
+
     const tags = JSON.parse(result);
     return Object.keys(tags);
   } catch (error) {
@@ -125,22 +110,17 @@ export async function listPackageTags(packageName: string): Promise<string[]> {
  */
 export async function searchPackages(packageName: string, keyword: string): Promise<string[]> {
   try {
-    // Check if npm is authenticated
-    if (!isNpmAuthenticated()) {
-      throw new Error('npm is not authenticated. Please run "npm login" first.');
-    }
-    
     // Get all tags for our package
     const allTags = await listPackageTags(packageName);
-    
+
     // Filter out chunk tags and latest tag, and search for keyword in tag names
     const mainTags = allTags.filter(tag => !tag.includes('-chunk-') && tag !== 'latest');
-    
+
     // Filter tags that match the keyword
-    const matchingTags = mainTags.filter(tag => 
+    const matchingTags = mainTags.filter(tag =>
       tag.toLowerCase().includes(keyword.toLowerCase())
     );
-    
+
     return matchingTags;
   } catch (error) {
     console.error('Error searching packages:', error);
@@ -163,28 +143,28 @@ export async function deletePackageTag(
     if (!isNpmAuthenticated()) {
       throw new Error('npm is not authenticated. Please run "npm login" first.');
     }
-    
+
     // Get the version associated with this tag
-    const result = execSync(`npm view ${packageName} dist-tags --json`, { 
+    const result = execSync(`npm view ${packageName} dist-tags --json`, {
       encoding: 'utf8'
     });
-    
+
     const distTags = JSON.parse(result);
     const version = distTags[tagName];
-    
+
     if (!version) {
       console.error(`Tag ${tagName} not found in dist-tags`);
       return false;
     }
-    
+
     console.log(`Unpublishing package ${packageName}@${version} (tag: ${tagName})...`);
-    
+
     // Unpublish the specific version
-    execSync(`npm unpublish ${packageName}@${version}`, { 
+    execSync(`npm unpublish ${packageName}@${version}`, {
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe']
     });
-    
+
     console.log(`Successfully deleted package ${packageName}@${version} (tag: ${tagName})`);
     return true;
   } catch (error) {
