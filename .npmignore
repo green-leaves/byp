@@ -1,0 +1,47 @@
+# IDE
+.idea/
+.vscode/
+
+# Build outputs (only exclude temp directories, keep dist)
+build/
+temp/
+
+# Dependencies
+node_modules/
+
+# Environment files
+.env*
+!.env.example
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+
+# Editor files
+*.swp
+*~
+
+# Source files - exclude TypeScript source (only publish compiled JS)
+src/
+*.ts
+*.tsx
+*.js.map
+
+# Test files (exclude both source and compiled tests)
+**/__tests__/
+*.test.js
+*.test.ts
+
+# Config and documentation files not needed in published package
+jest.config.js
+tsconfig.json
+spec.md
+QWEN.md
+large-test.txt

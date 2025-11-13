@@ -16,6 +16,7 @@ program
 
 program
   .command('package')
+  .alias('pkg')  // Add 'pkg' as an alias for 'package'
   .description('Manage packages - publish, download, list, search, and delete large files')
   .helpOption('-h, --help', 'Display help for command')
   .addHelpText('after', `
@@ -26,7 +27,7 @@ Package Management Commands:
   search <keyword>     Search for packages by keyword
   delete <name-ver>    Delete a published package
 
-Use byp package <command> --help for more information about a command.`)
+Use byp package <command> --help (or byp pkg <command> --help) for more information about a command.`)
   .addCommand(publish)
   .addCommand(download)
   .addCommand(list)
