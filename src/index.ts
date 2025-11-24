@@ -7,12 +7,15 @@ import { list } from './commands/list';
 import { search } from './commands/search';
 import { del } from './commands/delete';
 
+// Dynamically load version from package.json
+const packageJson = require('../package.json');
+
 const program = new Command();
 
 program
   .name('byp')
   .description('CLI tool for publishing and downloading large files to/from npm repositories')
-  .version('1.0.0');
+  .version(packageJson.version, '-v, --version', 'Output the version number');
 
 program
   .command('package')

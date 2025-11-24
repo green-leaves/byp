@@ -5,11 +5,13 @@ import { DEFAULT_PACKAGE_NAME } from '../constants';
 import * as path from 'path';
 
 export const list = new Command('list')
+  .alias('ls')  // Add 'ls' as an alias for 'list'
   .description('List all published packages')
   .helpOption('-h, --help', 'Display help for command')
   .addHelpText('after', `
 Examples:
   $ byp package list
+  $ byp package ls
 
 Description:
   Lists all packages that have been published using the 'publish' command.
@@ -38,8 +40,11 @@ Description:
         return;
       }
       
+      // Sort mainTags alphabetically before displaying
+      const sortedMainTags = mainTags.sort();
+
       console.log('Published packages:');
-      mainTags.forEach(tag => {
+      sortedMainTags.forEach(tag => {
         // The tag already contains platform information from the publish command
         // Just display it as is
         console.log(`  ${tag}`);
