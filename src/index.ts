@@ -10,12 +10,18 @@ import { del } from './commands/delete';
 // Dynamically load version from package.json
 const packageJson = require('../package.json');
 
+// Check if only -v flag is passed without any command, then show version
+if (process.argv[2] === '-v' && process.argv.length === 3) {
+  console.log(packageJson.version);
+  process.exit(0);
+}
+
 const program = new Command();
 
 program
   .name('byp')
   .description('CLI tool for publishing and downloading large files to/from npm repositories')
-  .version(packageJson.version, '-v, --version', 'Output the version number');
+  .version(packageJson.version); // This adds -V and --version by default
 
 program
   .command('package')
